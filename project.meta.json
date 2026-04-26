@@ -1,0 +1,26 @@
+{
+  "name": "upkeeper",
+  "description": "Enterprise-grade uptime monitoring platform featuring high-fidelity dark UI, SSL probing, and BasaltPass OAuth2 integration.",
+  "version": "1.0.0",
+  "author": "hrzh@ucdavis.edu",
+  "technologies": [
+    "Go",
+    "Fiber Framework",
+    "React",
+    "TypeScript",
+    "Vite",
+    "SQLite",
+    "GORM",
+    "Recharts",
+    "lucide-react"
+  ],
+  "features": [
+    "Continuous automated HTTP/S endpoint pinging",
+    "Precision Latency / Response Time graphing",
+    "Deep TLS certificate decoding & expiration checking",
+    "Dynamic Uptime visual blocks",
+    "Slug-based Public Status Pages for unauthenticated visitors",
+    "Native BasaltPass Identity management firewall",
+    "Flat minimal dark-theme aesthetic"
+  ]
+}

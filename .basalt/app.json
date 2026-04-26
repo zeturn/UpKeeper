@@ -1,0 +1,14 @@
+{
+  "app_id": "upkeeper",
+  "app_key": "upkeeper",
+  "display_name": "UpKeeper Web Monitor",
+  "homepage_url": "http://localhost:5114",
+  "api_base_url": "http://localhost:8111",
+  "callback_urls": [
+    "http://localhost:8111/api/auth/callback"
+  ],
+  "service_ports": [8111, 5114],
+  "metadata": {
+    "description": "Uptime monitoring tool similar to UptimeRobot."
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "permissions": [
+    {
+      "permission_key": "upkeeper.admin",
+      "name": "UpKeeper Admin",
+      "description": "Full access to all monitors."
+    },
+    {
+      "permission_key": "upkeeper.user",
+      "name": "UpKeeper User",
+      "description": "Access to own monitors."
+    }
+  ],
+  "roles": [
+    {
+      "role_key": "upkeeper_admin",
+      "name": "UpKeeper Administrator",
+      "description": "Administrator with full access."
+    },
+    {
+      "role_key": "upkeeper_user",
+      "name": "UpKeeper User",
+      "description": "Regular user."
+    }
+  ],
+  "role_permissions": [
+    {
+      "role_key": "upkeeper_admin",
+      "permission_key": "upkeeper.admin",
+      "effect": "allow"
+    },
+    {
+      "role_key": "upkeeper_user",
+      "permission_key": "upkeeper.user",
+      "effect": "allow"
+    }
+  ]
+}
