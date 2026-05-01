@@ -1,4 +1,4 @@
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, YAxis, Tooltip } from 'recharts';
 import { Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 

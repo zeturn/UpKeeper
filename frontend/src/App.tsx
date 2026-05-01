@@ -3,11 +3,10 @@ import axios from 'axios';
 import Dashboard from './pages/Dashboard';
 import MonitorDetail from './pages/MonitorDetail';
 import PublicStatusPage from './pages/PublicStatusPage';
-import { Routes, Route, Link } from 'react-router-dom';
-import { Activity } from 'lucide-react';
+import { Routes, Route } from 'react-router-dom';
 
 axios.defaults.withCredentials = true;
-axios.defaults.baseURL = 'http://localhost:8111';
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || '';
 
 function ProtectedApp() {
   const [user, setUser] = useState<{ id: number, name: string, email: string } | null>(null);

@@ -1,0 +1,31 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    image: ghcr.io/${GHCR_OWNER:-zeturn}/upkeeper-backend:${UPKEEPER_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DB_PATH: /data/upkeeper.db
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5114}
+      BASALT_BASE_URL: ${BASALT_BASE_URL:-https://auth.beancs.hollowdata.com}
+      BASALT_CLIENT_ID: ${BASALT_CLIENT_ID:-upkeeper}
+      BASALT_CLIENT_SECRET: ${BASALT_CLIENT_SECRET:-}
+      BASALT_REDIRECT_URI: ${BASALT_REDIRECT_URI:-http://localhost:8111/api/auth/callback}
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+    volumes:
+      - upkeeper-data:/data
+    ports:
+      - "8111:8111"
+
+  frontend:
+    build:
+      context: ./frontend
+    image: ghcr.io/${GHCR_OWNER:-zeturn}/upkeeper-frontend:${UPKEEPER_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5114:80"
+
+volumes:
+  upkeeper-data:

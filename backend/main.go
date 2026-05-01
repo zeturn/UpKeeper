@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/WorkPlace/UpKeeper/backend/database"
 	"github.com/WorkPlace/UpKeeper/backend/handlers"
@@ -23,8 +24,12 @@ func main() {
 
 	app.Use(logger.New())
 
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:5114"
+	}
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:5114",
+		AllowOrigins:     frontendURL,
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowCredentials: true,
 	}))
@@ -34,7 +39,7 @@ func main() {
 	auth.Get("/login", handlers.Login)
 	auth.Get("/callback", handlers.Callback)
 	auth.Post("/logout", handlers.Logout)
-	
+
 	// Protected Auth Route
 	auth.Use(handlers.AuthMiddleware)
 	auth.Get("/me", handlers.Me)
