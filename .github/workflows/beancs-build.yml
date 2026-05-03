@@ -1,0 +1,53 @@
+name: BeanCS Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Target GHCR image reference
+        required: true
+      dockerfile_path:
+        description: Dockerfile path
+        required: false
+        default: Dockerfile
+      context:
+        description: Docker build context
+        required: false
+        default: .
+  push:
+    branches:
+      - master
+
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve image
+        id: meta
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            IMAGE="${{ inputs.image }}"
+          else
+            REPO="${GITHUB_REPOSITORY,,}"
+            IMAGE="ghcr.io/${REPO}:beancs-${GITHUB_SHA::12}"
+          fi
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ github.event_name == 'workflow_dispatch' && inputs.context || '.' }}
+          file: ${{ github.event_name == 'workflow_dispatch' && inputs.dockerfile_path || 'backend/Dockerfile' }}
+          push: true
+          tags: ${{ steps.meta.outputs.image }}
