@@ -22,9 +22,11 @@ import (
 func getBasaltBaseURL() string { return getEnv("BASALT_BASE_URL", "http://localhost:8101") }
 func getClientID() string      { return getEnv("BASALT_CLIENT_ID", "upkeeper") }
 func getClientSecret() string  { return getEnv("BASALT_CLIENT_SECRET", "") }
-func getRedirectURI() string   { return getEnv("BASALT_REDIRECT_URI", "http://localhost:8111/api/auth/callback") }
+func getRedirectURI() string {
+	return getEnv("BASALT_REDIRECT_URI", "http://localhost:8111/api/auth/callback")
+}
 func getFrontendTarget() string { return getEnv("FRONTEND_URL", "http://localhost:5114") }
-func getJwtSecret() []byte     { return []byte(getEnv("JWT_SECRET", "super-secret-upkeeper-key")) }
+func getJwtSecret() []byte      { return []byte(getEnv("JWT_SECRET", "super-secret-upkeeper-key")) }
 
 func getEnv(key, fallback string) string {
 	if value, exists := os.LookupEnv(key); exists {
@@ -50,6 +52,7 @@ func generatePKCE() (verifier, challenge string) {
 
 func Login(c *fiber.Ctx) error {
 	state := generateRandomString(16)
+	nonce := generateRandomString(16)
 	verifier, challenge := generatePKCE()
 
 	// Store state and verifier in HttpOnly cookies to cross-check later
@@ -65,12 +68,19 @@ func Login(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(10 * time.Minute),
 		HTTPOnly: true,
 	})
+	c.Cookie(&fiber.Cookie{
+		Name:     "oauth_nonce",
+		Value:    nonce,
+		Expires:  time.Now().Add(10 * time.Minute),
+		HTTPOnly: true,
+	})
 
 	q := url.Values{}
 	q.Set("client_id", getClientID())
 	q.Set("redirect_uri", getRedirectURI())
 	q.Set("response_type", "code")
 	q.Set("state", state)
+	q.Set("nonce", nonce)
 	q.Set("code_challenge", challenge)
 	q.Set("code_challenge_method", "S256")
 	q.Set("scope", "openid profile email") // typical scopes
@@ -82,9 +92,10 @@ func Login(c *fiber.Ctx) error {
 func Callback(c *fiber.Ctx) error {
 	code := c.Query("code")
 	state := c.Query("state")
-	
+
 	cookieState := c.Cookies("oauth_state")
 	verifier := c.Cookies("oauth_verifier")
+	expectedNonce := c.Cookies("oauth_nonce")
 
 	if state == "" || cookieState == "" || state != cookieState {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid state")
@@ -122,6 +133,11 @@ func Callback(c *fiber.Ctx) error {
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to parse token response")
+	}
+	if tokenResp.IDToken != "" {
+		if err := validateIDTokenNonce(tokenResp.IDToken, expectedNonce); err != nil {
+			return c.Status(fiber.StatusUnauthorized).SendString("Invalid id_token nonce")
+		}
 	}
 
 	// Fetch User info
@@ -186,6 +202,21 @@ func Callback(c *fiber.Ctx) error {
 	return c.Redirect(getFrontendTarget(), fiber.StatusFound)
 }
 
+func validateIDTokenNonce(idToken, expectedNonce string) error {
+	if expectedNonce == "" {
+		return fmt.Errorf("missing expected nonce")
+	}
+	claims := jwt.MapClaims{}
+	parser := jwt.NewParser()
+	if _, _, err := parser.ParseUnverified(idToken, claims); err != nil {
+		return err
+	}
+	if nonce, _ := claims["nonce"].(string); nonce != expectedNonce {
+		return fmt.Errorf("nonce mismatch")
+	}
+	return nil
+}
+
 func Logout(c *fiber.Ctx) error {
 	c.Cookie(&fiber.Cookie{
 		Name:     "upkeeper_session",
@@ -214,7 +245,7 @@ func AuthMiddleware(c *fiber.Ctx) error {
 
 	claims := token.Claims.(jwt.MapClaims)
 	userID := uint(claims["id"].(float64))
-	
+
 	// Set user id to context
 	c.Locals("user_id", userID)
 	return c.Next()
