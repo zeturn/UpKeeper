@@ -19,11 +19,17 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func getBasaltBaseURL() string { return getEnv("BASALT_BASE_URL", "http://localhost:8101") }
-func getClientID() string      { return getEnv("BASALT_CLIENT_ID", "upkeeper") }
-func getClientSecret() string  { return getEnv("BASALT_CLIENT_SECRET", "") }
+func getBasaltBaseURL() string {
+	return getEnvAny([]string{"BASALTPASS_BASE_URL", "BASALT_BASE_URL"}, "http://localhost:8101")
+}
+func getClientID() string {
+	return getEnvAny([]string{"BASALTPASS_CLIENT_ID", "BASALT_CLIENT_ID"}, "upkeeper")
+}
+func getClientSecret() string {
+	return getEnvAny([]string{"BASALTPASS_CLIENT_SECRET", "BASALT_CLIENT_SECRET"}, "")
+}
 func getRedirectURI() string {
-	return getEnv("BASALT_REDIRECT_URI", "http://localhost:8111/api/auth/callback")
+	return getEnvAny([]string{"BASALTPASS_REDIRECT_URI", "BASALT_REDIRECT_URI"}, "http://localhost:8111/api/auth/callback")
 }
 func getFrontendTarget() string { return getEnv("FRONTEND_URL", "http://localhost:5114") }
 func getJwtSecret() []byte      { return []byte(getEnv("JWT_SECRET", "super-secret-upkeeper-key")) }
@@ -31,6 +37,15 @@ func getJwtSecret() []byte      { return []byte(getEnv("JWT_SECRET", "super-secr
 func getEnv(key, fallback string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
+	}
+	return fallback
+}
+
+func getEnvAny(keys []string, fallback string) string {
+	for _, key := range keys {
+		if value, exists := os.LookupEnv(key); exists {
+			return value
+		}
 	}
 	return fallback
 }

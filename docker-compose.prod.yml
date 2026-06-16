@@ -7,10 +7,10 @@ services:
     environment:
       DB_PATH: /data/upkeeper.db
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5114}
-      BASALT_BASE_URL: ${BASALT_BASE_URL:-https://auth.beancs.hollowdata.com}
-      BASALT_CLIENT_ID: ${BASALT_CLIENT_ID:-upkeeper}
-      BASALT_CLIENT_SECRET: ${BASALT_CLIENT_SECRET:-}
-      BASALT_REDIRECT_URI: ${BASALT_REDIRECT_URI:-http://localhost:8111/api/auth/callback}
+      BASALTPASS_BASE_URL: ${BASALTPASS_BASE_URL:-https://auth.beancs.hollowdata.com}
+      BASALTPASS_CLIENT_ID: ${BASALTPASS_CLIENT_ID:-upkeeper}
+      BASALTPASS_CLIENT_SECRET: ${BASALTPASS_CLIENT_SECRET:-}
+      BASALTPASS_REDIRECT_URI: ${BASALTPASS_REDIRECT_URI:-http://localhost:8111/api/auth/callback}
       JWT_SECRET: ${JWT_SECRET:-change-me}
     volumes:
       - upkeeper-data:/data
