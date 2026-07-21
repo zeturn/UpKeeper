@@ -86,7 +86,7 @@ jobs:
           registry: ${{ secrets.BEANCS_REGISTRY_HOST }}
           username: ${{ secrets.BEANCS_REGISTRY_USERNAME }}
           password: ${{ secrets.BEANCS_REGISTRY_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: ${{ github.event_name == 'workflow_dispatch' && inputs.context || 'frontend' }}
           file: ${{ github.event_name == 'workflow_dispatch' && inputs.dockerfile_path || 'frontend/Dockerfile' }}
