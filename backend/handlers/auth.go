@@ -20,6 +20,10 @@ import (
 )
 
 func getBasaltBaseURL() string { return getEnv("BASALT_BASE_URL", "http://localhost:8101") }
+// 浏览器侧可见的 BasaltPass 地址（容器内后端访问宿主机请用 BASALT_BASE_URL=http://host.docker.internal:8101）
+func getBrowserBasaltBaseURL() string {
+	return getEnv("BASALT_PUBLIC_BASE_URL", "http://localhost:8101")
+}
 func getClientID() string      { return getEnv("BASALT_CLIENT_ID", "upkeeper") }
 func getClientSecret() string  { return getEnv("BASALT_CLIENT_SECRET", "") }
 func getRedirectURI() string {
@@ -85,7 +89,7 @@ func Login(c *fiber.Ctx) error {
 	q.Set("code_challenge_method", "S256")
 	q.Set("scope", "openid profile email") // typical scopes
 
-	authURL := fmt.Sprintf("%s/api/v1/oauth/authorize?%s", getBasaltBaseURL(), q.Encode())
+	authURL := fmt.Sprintf("%s/api/v1/oauth/authorize?%s", getBrowserBasaltBaseURL(), q.Encode())
 	return c.Redirect(authURL, fiber.StatusFound)
 }
 

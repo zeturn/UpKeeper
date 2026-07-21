@@ -3,6 +3,7 @@ package worker
 import (
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/WorkPlace/UpKeeper/backend/database"
@@ -46,8 +47,14 @@ func pingMonitor(m models.Monitor, checkTime time.Time) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
-	
-	req, err := http.NewRequest(http.MethodGet, m.URL, nil)
+
+	// Ensure URL has a scheme so http.NewRequest doesn't fail with "unsupported protocol scheme"
+	target := m.URL
+	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
+		target = "http://" + target
+	}
+
+	req, err := http.NewRequest(http.MethodGet, target, nil)
 	if err != nil {
 		recordResult(m.ID, false, 0, checkTime, err.Error(), nil)
 		return

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Shield, Activity } from 'lucide-react';
+import { Shield, Activity, Pause, ArrowUp, ArrowDown } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis } from 'recharts';
+import { Card } from '@zeturn/watercolor-react';
 
 export default function PublicStatusPage() {
   const { slug } = useParams();
@@ -35,16 +36,16 @@ export default function PublicStatusPage() {
   }, [fetchDetail]);
 
   if (loading) {
-    return <div className="login-wall" style={{ color: '#3b82f6', fontSize: '1.2rem', fontWeight: 600 }}>Loading Status...</div>;
+    return <div className="login-wall"><p className="text-muted">Loading Status…</p></div>;
   }
 
   if (error || !data) {
     return (
       <div className="login-wall">
-        <div className="login-card">
+        <Card className="login-card">
           <h1>404 Not Found</h1>
           <p>This status page doesn't exist or is not public.</p>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -73,7 +74,7 @@ export default function PublicStatusPage() {
   const blocks = [];
   const totalBlocks = 40;
   const pingsCount = recent_pings.length;
-  
+
   for (let i = 0; i < totalBlocks; i++) {
     const pingIdx = pingsCount - totalBlocks + i;
     if (pingIdx >= 0 && pingIdx < pingsCount) {
@@ -83,12 +84,15 @@ export default function PublicStatusPage() {
     }
   }
 
+  const statusKey = monitor.status === 'paused' ? 'paused' : monitor.status === 'up' ? 'up' : 'down';
+  const accent = 'var(--wc-accent, #2563eb)';
+
   return (
     <div className="app-container" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <div className="detail-header" style={{ marginTop: '2rem' }}>
+      <div className="detail-header" style={{ marginTop: '1rem' }}>
         <div className="title-section">
-          <div className={`status-circle ${monitor.status === 'up' ? 'up' : 'down'}`} style={monitor.status === 'paused' ? {borderColor: '#94a3b8', color: '#94a3b8', background: 'transparent'} : {}}>
-            {monitor.status === 'paused' ? <span className="inner-arrow" style={{background: '#94a3b8'}}>❚ ❚</span> : <span className="inner-arrow">{monitor.status === 'up' ? '▲' : '▼'}</span>}
+          <div className={`status-circle ${statusKey}`}>
+            {statusKey === 'paused' ? <Pause size={20} /> : statusKey === 'up' ? <ArrowUp size={22} /> : <ArrowDown size={22} />}
           </div>
           <div>
             <h2>{monitor.name}</h2>
@@ -96,28 +100,28 @@ export default function PublicStatusPage() {
           </div>
         </div>
         <div className="action-buttons">
-          <Link to="/" style={{ color: '#3b82f6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem' }}>
-            <Activity color="#3b82f6" size={16}/> Powered by UpKeeper
+          <Link to="/" style={{ color: accent, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem' }}>
+            <Activity size={16} /> Powered by UpKeeper
           </Link>
         </div>
       </div>
 
       <div className="detail-grid">
-        <div className="widget-card">
+        <Card className="widget-card">
           <h4 className="widget-title">Current status</h4>
           <div className={`widget-value ${monitor.status === 'paused' ? 'text-muted' : monitor.status === 'up' ? 'text-green' : 'text-red'}`}>
             {monitor.status === 'paused' ? 'Paused' : monitor.status === 'up' ? 'All systems operational' : 'Major Outage'}
           </div>
           <p className="widget-desc">Live tracker</p>
-        </div>
+        </Card>
 
-        <div className="widget-card">
+        <Card className="widget-card">
           <h4 className="widget-title">Last check</h4>
-          <div className="widget-value text-white">{formatRelativeTime(monitor.last_check)}</div>
+          <div className="widget-value">{formatRelativeTime(monitor.last_check)}</div>
           <p className="widget-desc">Checked periodically</p>
-        </div>
+        </Card>
 
-        <div className="widget-card col-span-2">
+        <Card className="widget-card col-span-2">
           <div className="flex-between">
              <h4 className="widget-title">Recent Timeline</h4>
              <span className="widget-title">{uptime_24h.uptime_pct}</span>
@@ -128,9 +132,9 @@ export default function PublicStatusPage() {
             ))}
           </div>
           <p className="widget-desc">Service continuity view</p>
-        </div>
+        </Card>
 
-        <div className="widget-card col-span-3">
+        <Card className="widget-card col-span-3">
           <h4 className="widget-title">Uptime stats.</h4>
           <div className="stats-row">
             <div>
@@ -146,18 +150,18 @@ export default function PublicStatusPage() {
               <h3 className="stat-value text-muted">{uptime_365d.uptime_pct}</h3>
             </div>
           </div>
-        </div>
+        </Card>
 
-        <div className="widget-card">
+        <Card className="widget-card">
           <h4 className="widget-title">SSL / Security</h4>
           <div className="cert-info">
             <p className="stat-label">Cert valid until</p>
-            <p className="cert-date text-white"><Shield size={14}/> {formatDate(monitor.ssl_expiry)}</p>
+            <p className="cert-date"><Shield size={14} /> {formatDate(monitor.ssl_expiry)}</p>
           </div>
-        </div>
+        </Card>
       </div>
 
-      <div className="chart-widget widget-card mt-4">
+      <Card className="chart-widget widget-card mt-4">
          <div className="flex-between mb-4">
            <h4 className="widget-title">Response time</h4>
            <span className="stat-label">Realtime View</span>
@@ -166,23 +170,23 @@ export default function PublicStatusPage() {
          {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
-              <YAxis tick={{fill: '#475569'}} axisLine={false} tickLine={false} domain={['dataMin', 'dataMax + 50']} />
+              <YAxis tick={{ fill: 'var(--wc-text-tertiary, #9aa5b1)' }} axisLine={false} tickLine={false} domain={['dataMin', 'dataMax + 50']} />
               <XAxis dataKey="time" hide />
-              <Area 
-                type="step" 
-                dataKey="latency" 
-                stroke="#3b82f6" 
+              <Area
+                type="step"
+                dataKey="latency"
+                stroke={accent}
                 strokeWidth={2}
-                fillOpacity={0.15} 
-                fill="#3b82f6" 
+                fillOpacity={0.12}
+                fill={accent}
               />
             </AreaChart>
           </ResponsiveContainer>
          ) : (
-           <p className="widget-desc text-center mt-8">Waiting for data...</p>
+           <p className="widget-desc text-center mt-8">Waiting for data…</p>
          )}
          </div>
-      </div>
+      </Card>
     </div>
   );
 }

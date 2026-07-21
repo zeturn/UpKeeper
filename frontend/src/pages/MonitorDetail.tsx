@@ -1,21 +1,73 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
-import { ChevronLeft, Bell, Pause, Play, Settings, MoreVertical, Shield } from 'lucide-react';
+import { ChevronLeft, Bell, Pause, Play, Settings, Shield, ArrowUp, ArrowDown } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis } from 'recharts';
+import { Button, Card, Modal, Input, Checkbox } from '@zeturn/watercolor-react';
+
+// ─── Edit Monitor Modal (memoized, stable props) ────────────────────────
+const EditMonitorModal = memo(function EditMonitorModal({ open, onClose, onSaved, monitor, monitorId }: {
+  open: boolean; onClose: () => void; onSaved: () => void;
+  monitor: { name: string; url: string; interval: number; is_public?: boolean } | null;
+  monitorId: number;
+}) {
+  const [formData, setFormData] = useState({ name: '', url: '', interval: 60, is_public: false });
+  const [saving, setSaving] = useState(false);
+  const initDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (open && monitor && !initDoneRef.current) {
+      initDoneRef.current = true;
+      setFormData({ name: monitor.name || '', url: monitor.url || '', interval: monitor.interval || 60, is_public: monitor.is_public || false });
+    }
+    if (!open) initDoneRef.current = false;
+  }, [open, monitor]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try { await axios.put(`/api/monitors/${monitorId}`, formData); onClose(); onSaved(); }
+    catch { alert('Failed to update monitor'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open={open} title="Edit Monitor" onClose={onClose}
+      footer={<div className="form-actions">
+        <Button variant="secondary" buttonStyle="outlined" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={handleSubmit} loading={saving}>Update Monitor</Button>
+      </div>}>
+      <form onSubmit={handleSubmit} className="form-stack">
+        <Input label="Friendly Name" required fullWidth autoFocus value={formData.name}
+          onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="My Website" />
+        <Input label="Target URL" type="url" required fullWidth value={formData.url}
+          onChange={e => setFormData(p => ({ ...p, url: e.target.value }))} placeholder="https://example.com" />
+        <Input label="Check Interval (seconds)" type="number" required min={10} fullWidth value={formData.interval}
+          onChange={e => setFormData(p => ({ ...p, interval: Number(e.target.value) }))} />
+        <Checkbox label="Require Public Viewer Status Page" checked={formData.is_public}
+          onChange={e => setFormData(p => ({ ...p, is_public: e.target.checked }))} />
+      </form>
+    </Modal>
+  );
+});
 
 export default function MonitorDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [formData, setFormData] = useState({ name: '', url: '', interval: 60, is_public: false });
   const [nowTs, setNowTs] = useState(Date.now());
+  const editSnapshotRef = useRef<{ name: string; url: string; interval: number; is_public?: boolean } | null>(null);
+  // 稳定的 onClose 回调，避免每次渲染创建新引用导致 memo 失效
+  const handleCloseEditModal = useCallback(() => setShowEditModal(false), []);
 
   useEffect(() => {
+    if (showEditModal) return; // Modal 打开时停止时间刷新，避免父组件重渲染导致失焦
     const timer = setInterval(() => setNowTs(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [showEditModal]);
 
   const fetchDetail = useCallback(async () => {
     try {
@@ -40,10 +92,10 @@ export default function MonitorDetail() {
       if (Notification.permission !== "granted") {
         Notification.requestPermission();
       } else {
-        new Notification("Test Notification", { body: "Your notification system is working perfectly!" });
+        new Notification("Test Notification", { body: "Your notification system is working perfectly." });
       }
     }
-    alert("Test notification triggered! (Browser notification should appear if permitted)");
+    alert("Test notification triggered. (Browser notification should appear if permitted)");
   };
 
   const handleTogglePause = async () => {
@@ -55,35 +107,17 @@ export default function MonitorDetail() {
     }
   };
 
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await axios.put(`/api/monitors/${id}`, formData);
-      setShowEditModal(false);
-      fetchDetail();
-    } catch (err) {
-      alert("Failed to update monitor");
-    }
-  };
-
   const openEditModal = () => {
-    if (data?.monitor) {
-      setFormData({
-        name: data.monitor.name,
-        url: data.monitor.url,
-        interval: data.monitor.interval,
-        is_public: data.monitor.is_public || false
-      });
-    }
+    editSnapshotRef.current = data?.monitor ?? null;
     setShowEditModal(true);
   };
 
   if (loading) {
-    return <div style={{ padding: '2rem', color: '#fff' }}>Loading details...</div>;
+    return <div style={{ padding: '2rem' }}><p className="text-muted">Loading details…</p></div>;
   }
 
   if (!data) {
-    return <div style={{ padding: '2rem', color: '#fff' }}>Monitor not found.</div>;
+    return <div style={{ padding: '2rem' }}><p className="text-muted">Monitor not found.</p></div>;
   }
 
   const { monitor, uptime_24h, uptime_7d, uptime_30d, uptime_365d, recent_pings } = data;
@@ -111,7 +145,7 @@ export default function MonitorDetail() {
   const blocks = [];
   const totalBlocks = 40;
   const pingsCount = recent_pings.length;
-  
+
   for (let i = 0; i < totalBlocks; i++) {
     const pingIdx = pingsCount - totalBlocks + i;
     if (pingIdx >= 0 && pingIdx < pingsCount) {
@@ -121,60 +155,65 @@ export default function MonitorDetail() {
     }
   }
 
+  const statusKey = monitor.status === 'paused' ? 'paused' : monitor.status === 'up' ? 'up' : 'down';
+  const accent = 'var(--wc-accent, #2563eb)';
+
   return (
     <div className="monitor-detail">
       <div className="detail-navigation">
-        <Link to="/" className="back-link">
-          <ChevronLeft size={16} /> Monitoring
-        </Link>
+        <Button variant="text" startIcon={<ChevronLeft size={16} />} onClick={() => navigate('/')}>
+          Monitoring
+        </Button>
       </div>
 
-      <div className="detail-header">
+      <Card className="detail-header">
         <div className="title-section">
-          <div className={`status-circle ${monitor.status === 'up' ? 'up' : 'down'}`} style={monitor.status === 'paused' ? {borderColor: '#94a3b8', color: '#94a3b8', background: 'transparent'} : {}}>
-            {monitor.status === 'paused' ? <span className="inner-arrow" style={{background: '#94a3b8'}}>❚ ❚</span> : <span className="inner-arrow">{monitor.status === 'up' ? '▲' : '▼'}</span>}
+          <div className={`status-circle ${statusKey}`}>
+            {statusKey === 'paused' ? <Pause size={20} /> : statusKey === 'up' ? <ArrowUp size={22} /> : <ArrowDown size={22} />}
           </div>
           <div>
-            <h2>{monitor.name} {monitor.status === 'paused' && <span style={{fontSize: '1rem', fontWeight: 400, color: '#fbbf24'}}>(Paused)</span>}</h2>
+            <h2>
+              {monitor.name}
+              {monitor.status === 'paused' && <span className="text-muted" style={{ fontSize: '0.9rem', fontWeight: 400 }}>(Paused)</span>}
+            </h2>
             <p className="subtitle">HTTP/S monitor for {monitor.url}</p>
-            <div className="tags">
-              <span className="tag">Client 1</span>
-              <span className="tag">Server Europe</span>
-            </div>
+
           </div>
         </div>
         <div className="action-buttons">
           {monitor.is_public && (
-            <a href={`/status/${monitor.public_slug}`} target="_blank" rel="noreferrer" className="btn-secondary" style={{color: '#34d399', borderColor: '#34d399', textDecoration: 'none'}}>
-              <Shield size={14}/> Public Status Page
-            </a>
+            <Button href={`/status/${monitor.public_slug}`} target="_blank" variant="success" buttonStyle="outlined" size="sm" startIcon={<Shield size={14} />}>
+              Public Status Page
+            </Button>
           )}
-          <button className="btn-secondary" onClick={handleTestNotification}><Bell size={14}/> Test notification</button>
-          <button className="btn-secondary" onClick={handleTogglePause}>
-            {monitor.status === 'paused' ? <Play size={14}/> : <Pause size={14}/>} 
+          <Button variant="secondary" buttonStyle="outlined" size="sm" startIcon={<Bell size={14} />} onClick={handleTestNotification}>
+            Test notification
+          </Button>
+          <Button variant="secondary" buttonStyle="outlined" size="sm" startIcon={monitor.status === 'paused' ? <Play size={14} /> : <Pause size={14} />} onClick={handleTogglePause}>
             {monitor.status === 'paused' ? 'Resume' : 'Pause'}
-          </button>
-          <button className="btn-secondary" onClick={openEditModal}><Settings size={14}/> Edit</button>
-          <button className="btn-icon"><MoreVertical size={16}/></button>
+          </Button>
+          <Button variant="secondary" buttonStyle="outlined" size="sm" startIcon={<Settings size={14} />} onClick={openEditModal}>
+            Edit
+          </Button>
         </div>
-      </div>
+      </Card>
 
       <div className="detail-grid">
-        <div className="widget-card">
+        <Card className="widget-card">
           <h4 className="widget-title">Current status</h4>
           <div className={`widget-value ${monitor.status === 'paused' ? 'text-muted' : monitor.status === 'up' ? 'text-green' : 'text-red'}`}>
             {monitor.status === 'paused' ? 'Paused' : monitor.status === 'up' ? 'Up' : 'Down'}
           </div>
           <p className="widget-desc">Tracking active checks</p>
-        </div>
+        </Card>
 
-        <div className="widget-card">
+        <Card className="widget-card">
           <h4 className="widget-title">Last check</h4>
-          <div className="widget-value text-white">{formatRelativeTime(monitor.last_check)}</div>
+          <div className="widget-value">{formatRelativeTime(monitor.last_check)}</div>
           <p className="widget-desc">Checked every {monitor.interval} s</p>
-        </div>
+        </Card>
 
-        <div className="widget-card col-span-2">
+        <Card className="widget-card col-span-2">
           <div className="flex-between">
              <h4 className="widget-title">Last {monitor.interval >= 3600 ? '24 hours' : (monitor.interval * totalBlocks >= 3600 ? 'Recent' : 'Timeline')}</h4>
              <span className="widget-title">{uptime_24h.uptime_pct}</span>
@@ -185,9 +224,9 @@ export default function MonitorDetail() {
             ))}
           </div>
           <p className="widget-desc">Recent checks timeline view</p>
-        </div>
+        </Card>
 
-        <div className="widget-card col-span-3">
+        <Card className="widget-card col-span-3">
           <h4 className="widget-title">Uptime stats.</h4>
           <div className="stats-row">
             <div>
@@ -203,18 +242,18 @@ export default function MonitorDetail() {
               <h3 className="stat-value text-muted">{uptime_365d.uptime_pct}</h3>
             </div>
           </div>
-        </div>
+        </Card>
 
-        <div className="widget-card">
+        <Card className="widget-card">
           <h4 className="widget-title">Domain & SSL cert.</h4>
           <div className="cert-info">
             <p className="stat-label">SSL valid until</p>
-            <p className="cert-date text-white"><Shield size={14}/> {formatDate(monitor.ssl_expiry)}</p>
+            <p className="cert-date"><Shield size={14} /> {formatDate(monitor.ssl_expiry)}</p>
           </div>
-        </div>
+        </Card>
       </div>
 
-      <div className="chart-widget widget-card mt-4">
+      <Card className="chart-widget widget-card mt-4">
          <div className="flex-between mb-4">
            <h4 className="widget-title">Response time</h4>
            <span className="stat-label">Realtime View</span>
@@ -223,52 +262,33 @@ export default function MonitorDetail() {
          {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
-              <YAxis tick={{fill: '#475569'}} axisLine={false} tickLine={false} domain={['dataMin', 'dataMax + 50']} />
+              <YAxis tick={{ fill: 'var(--wc-text-tertiary, #9aa5b1)' }} axisLine={false} tickLine={false} domain={['dataMin', 'dataMax + 50']} />
               <XAxis dataKey="time" hide />
-              <Area 
-                type="step" 
-                dataKey="latency" 
-                stroke="#3b82f6" 
+              <Area
+                type="step"
+                dataKey="latency"
+                stroke={accent}
                 strokeWidth={2}
-                fillOpacity={0.15} 
-                fill="#3b82f6" 
+                fillOpacity={0.12}
+                fill={accent}
               />
             </AreaChart>
           </ResponsiveContainer>
          ) : (
-           <p className="widget-desc text-center mt-8">Waiting for data...</p>
+           <p className="widget-desc text-center mt-8">Waiting for data…</p>
          )}
          </div>
-      </div>
+      </Card>
 
-      {showEditModal && (
-        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>Edit Monitor</h2>
-            <form onSubmit={handleEditSubmit}>
-              <div className="form-group">
-                <label>Friendly Name</label>
-                <input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="My Website" />
-              </div>
-              <div className="form-group">
-                <label>Target URL</label>
-                <input type="url" required value={formData.url} onChange={e => setFormData({ ...formData, url: e.target.value })} placeholder="https://example.com" />
-              </div>
-              <div className="form-group">
-                <label>Check Interval (seconds)</label>
-                <input type="number" required min="10" value={formData.interval} onChange={e => setFormData({ ...formData, interval: Number(e.target.value) })} />
-              </div>
-              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <input type="checkbox" id="public_check_detail" style={{ width: 'auto', outline: 'none' }} checked={formData.is_public} onChange={e => setFormData({ ...formData, is_public: e.target.checked })} />
-                <label htmlFor="public_check_detail" style={{ margin: 0, cursor: 'pointer' }}>Require Public Viewer Status Page</label>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-cancel" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button type="submit" className="btn-submit">Update Monitor</button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {createPortal(
+        <EditMonitorModal
+          open={showEditModal}
+          onClose={handleCloseEditModal}
+          onSaved={fetchDetail}
+          monitor={editSnapshotRef.current}
+          monitorId={Number(id)}
+        />,
+        document.body
       )}
     </div>
   );
