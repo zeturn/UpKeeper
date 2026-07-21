@@ -42,6 +42,7 @@ spec:
         DB_PATH: /data/upkeeper.db
         FRONTEND_URL: https://upkeeper.beancs.com
         BASALT_PUBLIC_BASE_URL: https://auth.beancs.com
+        BASALT_REDIRECT_URI: https://upkeeper.beancs.com/api/auth/callback
       volumes:
         - name: data
           type: pvc
