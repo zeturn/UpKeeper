@@ -42,7 +42,7 @@ jobs:
       BEANCS_PROJECT: upkeeper-frontend
       BEANCS_IMAGE_BASE: registry.beancs.com/hollowdata/upkeeper-frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Resolve image
         id: meta
         shell: bash
