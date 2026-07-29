@@ -96,8 +96,15 @@ export default function Dashboard() {
   useEffect(() => {
     if (showModal) return;
     fetchMonitors();
-    const interval = setInterval(fetchMonitors, 5000);
-    return () => clearInterval(interval);
+    const refreshWhenVisible = () => {
+      if (!document.hidden) fetchMonitors();
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [showModal, fetchMonitors]);
 
   return (

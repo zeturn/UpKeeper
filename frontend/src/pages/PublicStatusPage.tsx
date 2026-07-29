@@ -10,12 +10,6 @@ export default function PublicStatusPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [nowTs, setNowTs] = useState(Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNowTs(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const fetchDetail = useCallback(async () => {
     try {
@@ -31,8 +25,15 @@ export default function PublicStatusPage() {
 
   useEffect(() => {
     fetchDetail();
-    const interval = setInterval(fetchDetail, 5000);
-    return () => clearInterval(interval);
+    const refreshWhenVisible = () => {
+      if (!document.hidden) fetchDetail();
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [fetchDetail]);
 
   if (loading) {
@@ -59,7 +60,7 @@ export default function PublicStatusPage() {
   }));
 
   const formatRelativeTime = (dateStr: string) => {
-    let diff = Math.floor((nowTs - new Date(dateStr).getTime()) / 1000);
+    let diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
     if (diff < 0) diff = 0;
     if (diff < 60) return `${diff} seconds ago`;
     if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;

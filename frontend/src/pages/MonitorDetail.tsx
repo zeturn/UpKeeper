@@ -58,16 +58,9 @@ export default function MonitorDetail() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [nowTs, setNowTs] = useState(Date.now());
   const editSnapshotRef = useRef<{ name: string; url: string; interval: number; is_public?: boolean } | null>(null);
   // 稳定的 onClose 回调，避免每次渲染创建新引用导致 memo 失效
   const handleCloseEditModal = useCallback(() => setShowEditModal(false), []);
-
-  useEffect(() => {
-    if (showEditModal) return; // Modal 打开时停止时间刷新，避免父组件重渲染导致失焦
-    const timer = setInterval(() => setNowTs(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [showEditModal]);
 
   const fetchDetail = useCallback(async () => {
     try {
@@ -83,8 +76,15 @@ export default function MonitorDetail() {
   useEffect(() => {
     if (showEditModal) return;
     fetchDetail();
-    const interval = setInterval(fetchDetail, 5000);
-    return () => clearInterval(interval);
+    const refreshWhenVisible = () => {
+      if (!document.hidden) fetchDetail();
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [fetchDetail, showEditModal]);
 
   const handleTestNotification = () => {
@@ -129,7 +129,7 @@ export default function MonitorDetail() {
   }));
 
   const formatRelativeTime = (dateStr: string) => {
-    let diff = Math.floor((nowTs - new Date(dateStr).getTime()) / 1000);
+    let diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
     if (diff < 0) diff = 0; // prevent negative elapsed
     if (diff < 60) return `${diff} seconds ago`;
     if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;
