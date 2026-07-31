@@ -2,18 +2,19 @@ import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
-import { ChevronLeft, Bell, Pause, Play, Settings, Shield, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronLeft, Bell, Pause, Play, Settings, Shield, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis } from 'recharts';
 import { Button, Card, Modal, Input, Checkbox } from '@zeturn/watercolor-react';
 
 // ─── Edit Monitor Modal (memoized, stable props) ────────────────────────
-const EditMonitorModal = memo(function EditMonitorModal({ open, onClose, onSaved, monitor, monitorId }: {
-  open: boolean; onClose: () => void; onSaved: () => void;
+const EditMonitorModal = memo(function EditMonitorModal({ open, onClose, onSaved, onDeleted, monitor, monitorId }: {
+  open: boolean; onClose: () => void; onSaved: () => void; onDeleted: () => void;
   monitor: { name: string; url: string; interval: number; is_public?: boolean } | null;
   monitorId: number;
 }) {
   const [formData, setFormData] = useState({ name: '', url: '', interval: 60, is_public: false });
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const initDoneRef = useRef(false);
 
   useEffect(() => {
@@ -32,9 +33,26 @@ const EditMonitorModal = memo(function EditMonitorModal({ open, onClose, onSaved
     finally { setSaving(false); }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this monitor permanently? This action cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      await axios.delete(`/api/monitors/${monitorId}`);
+      onClose();
+      onDeleted();
+    } catch {
+      alert('Failed to delete monitor');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <Modal open={open} title="Edit Monitor" onClose={onClose}
       footer={<div className="form-actions">
+        <Button variant="error" buttonStyle="outlined" startIcon={<Trash2 size={14} />} onClick={handleDelete} loading={deleting} style={{ marginRight: 'auto' }}>
+          Delete
+        </Button>
         <Button variant="secondary" buttonStyle="outlined" onClick={onClose}>Cancel</Button>
         <Button variant="primary" onClick={handleSubmit} loading={saving}>Update Monitor</Button>
       </div>}>
@@ -285,6 +303,7 @@ export default function MonitorDetail() {
           open={showEditModal}
           onClose={handleCloseEditModal}
           onSaved={fetchDetail}
+          onDeleted={() => navigate('/')}
           monitor={editSnapshotRef.current}
           monitorId={Number(id)}
         />,
