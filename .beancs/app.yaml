@@ -1,0 +1,73 @@
+apiVersion: beancs.io/v1alpha1
+kind: Application
+metadata:
+  name: upkeeper
+  displayName: UpKeeper
+  description: Uptime monitoring platform with API and web frontend.
+spec:
+  type: monorepo
+  repo:
+    provider: github
+    name: zeturn/UpKeeper
+    branch: deploy
+  autoDeploy:
+    enabled: true
+    mode: affected-components
+  components:
+    - name: backend
+      kind: service
+      projectName: upkeeper-backend
+      basaltPass:
+        callbackPath: /api/auth/callback
+        redirectURIs:
+          - https://upkeeper.beancs.com/api/auth/callback
+        allowedOrigins:
+          - https://upkeeper.beancs.com
+        scopes:
+          - openid
+          - profile
+          - email
+      build:
+        context: backend
+        dockerfile: backend/Dockerfile
+      ports:
+        - name: http
+          port: 8111
+          protocol: http
+          exposure: internal
+      healthCheck:
+        type: tcp
+        port: http
+      env:
+        DB_PATH: /data/upkeeper.db
+        FRONTEND_URL: https://upkeeper.beancs.com
+        BASALT_PUBLIC_BASE_URL: https://auth.beancs.com
+        BASALT_REDIRECT_URI: https://upkeeper.beancs.com/api/auth/callback
+      volumes:
+        - name: data
+          type: pvc
+          mountPath: /data
+          size: 5Gi
+      watchPaths:
+        - backend/**
+        - project.meta.json
+        - .beancs/app.yaml
+    - name: frontend
+      kind: frontend
+      projectName: upkeeper-frontend
+      build:
+        context: frontend
+        dockerfile: frontend/Dockerfile
+      ports:
+        - name: http
+          port: 80
+          protocol: http
+          exposure: public
+      healthCheck:
+        type: tcp
+        port: http
+      dependsOn:
+        - backend
+      watchPaths:
+        - frontend/**
+        - .beancs/app.yaml
