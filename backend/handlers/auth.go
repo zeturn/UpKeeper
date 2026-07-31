@@ -27,7 +27,7 @@ func getBrowserBasaltBaseURL() string {
 func getClientID() string      { return getEnv("BASALT_CLIENT_ID", "upkeeper") }
 func getClientSecret() string  { return getEnv("BASALT_CLIENT_SECRET", "") }
 func getRedirectURI() string {
-	return getEnv("BASALT_REDIRECT_URI", "http://localhost:8111/api/auth/callback")
+	return getEnv("BASALT_REDIRECT_URI", "http://localhost:8114/api/auth/callback")
 }
 func getFrontendTarget() string { return getEnv("FRONTEND_URL", "http://localhost:5114") }
 func getJwtSecret() []byte      { return []byte(getEnv("JWT_SECRET", "super-secret-upkeeper-key")) }
