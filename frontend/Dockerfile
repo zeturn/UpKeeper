@@ -2,6 +2,8 @@ FROM node:24-alpine AS build
 
 WORKDIR /src
 COPY package*.json ./
+ENV NODE_ENV=development
+ENV NPM_CONFIG_PRODUCTION=false
 RUN npm ci --include=dev
 COPY . .
 RUN npm run build
