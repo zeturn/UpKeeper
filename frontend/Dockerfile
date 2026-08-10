@@ -1,4 +1,5 @@
 FROM node:24-alpine AS build
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
 
 WORKDIR /src
 COPY package*.json ./
